@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>The evil run</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css?v=2">
+
+    <style type="text/css">
+
+    body{margin:15px;}
+
+    button {
+        width: 120px;
+        padding: 10px;
+        display: block;
+        border: 2px solid #111111;
+        cursor: pointer;
+        background-color: white;
+    }
+    
+    #click-photo {
+        display: none;
+    }
+    
+    #dataurl-container {
+        display: none;
+    }
+    
+    #canvas {
+        display: block;
+        margin: 0 0 20px 0;
+    }
+    
+    #dataurl-header {
+        text-align: center;
+        font-size: 15px;
+    }
+    
+    #dataurl {
+        display: block;
+        height: 100px;
+        width: 320px;
+        margin: 10px 0;
+        resize: none;
+        outline: none;
+        border: 1px solid #111111;
+        padding: 5px;
+        font-size: 13px;
+        box-sizing: border-box;
+    }
+    
+    </style>
+
+  </head>
+  <body>
+
+
+
+
+
+
+    <button id="start-camera">Activar Camera</button>
+    <button id="click-photo">Hacer Foto</button>
+    <br>
+    <div style="background:black;width:320px;height:240px">
+      <img src="img/profile.png?v=2" width="320" height="240" style="position:absolute">
+      <video id="video" width="320" height="240" autoplay></video>
+    </div>
+    <div id="dataurl-container">
+        <canvas id="canvas" width="320" height="240"></canvas>
+        <div id="dataurl-header">Image Data URL</div>
+        <textarea id="dataurl" readonly></textarea>
+    </div>
+    <br>
+    
+    <script>
+    
+    let camera_button = document.querySelector("#start-camera");
+    let video = document.querySelector("#video");
+    let click_button = document.querySelector("#click-photo");
+    let canvas_ = document.querySelector("#canvas");
+    let dataurl = document.querySelector("#dataurl");
+    let dataurl_container = document.querySelector("#dataurl-container");
+    
+    camera_button.addEventListener('click', async function() {
+           let stream = null;
+    
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+        catch(error) {
+            alert(error.message);
+            return;
+        }
+    
+        video.srcObject = stream;
+    
+        video.style.display = 'block';
+        camera_button.style.display = 'none';
+        click_button.style.display = 'block';
+    });
+    
+    click_button.addEventListener('click', function() {
+        canvas_.getContext('2d').drawImage(video, 0, 0, canvas_.width, canvas_.height);
+           let image_data_url = canvas_.toDataURL('image/jpeg');
+        
+        dataurl.value = image_data_url;
+        //dataurl_container.style.display = 'block';
+
+        
+
+    
+    
+        if( unityInstance != null ){
+
+            var value = image_data_url.replace('data:image/jpeg;base64,','');
+
+            console.log("enter");
+            console.log(value);
+
+
+            
+            var max = 2000;
+            var chunks = chunkSubstr(value, max);
+
+
+            for(var i=0;i<chunks.length; i++){
+                unityInstance.SendMessage('GameController', 'PlayerSetImagePart', i+"|"+chunks[i]);
+            
+            //console.log(i+"/"+chunks.length+"@"+chunks[i]);
+            }
+
+            setTimeout(function(){
+                unityInstance.SendMessage('GameController', 'PlayerSetImageFull');
+            },5);
+            
+
+            
+        }
+    
+    
+    });
+    
+    function chunkSubstr(str, size) {
+        const numChunks = Math.ceil(str.length / size)
+        const chunks = new Array(numChunks)
+
+        for (let i = 0, o = 0; i < numChunks; ++i, o += size) {
+            chunks[i] = str.substr(o, size)
+        }
+
+        return chunks
+    }
+    
+    </script>
+
+
+    <!-- start unity -->
+
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width=960 height=600></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div style="display:none"><div id="unity-warning"> </div></div>
+      <div id="unity-footer" style="display:none">
+        <div id="unity-webgl-logo"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">Crash</div>
+      </div>
+    </div>
+    <script>
+      var unityInstance = null;
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+      var warningBanner = document.querySelector("#unity-warning");
+
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/web12.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/web12.data",
+        frameworkUrl: buildUrl + "/web12.framework.js",
+        codeUrl: buildUrl + "/web12.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "Crash",
+        productVersion: "0.1",
+        showBanner: unityShowBanner,
+      };
+
+      // By default Unity keeps WebGL canvas render target size matched with
+      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+      // Set this to false if you want to decouple this synchronization from
+      // happening inside the engine, and you would instead like to size up
+      // the canvas DOM size and WebGL render target sizes yourself.
+      // config.matchWebGLToCanvasSize = false;
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Mobile device style: fill the whole browser client area with the game canvas:
+
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+        container.className = "unity-mobile";
+
+        // To lower canvas resolution on mobile devices to gain some
+        // performance, uncomment the following line:
+        // config.devicePixelRatio = 1;
+
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+
+        unityShowBanner('WebGL builds are not supported on mobile devices.');
+      } else {
+        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
+
+        canvas.style.width = "960px";
+        canvas.style.height = "600px";
+      }
+
+      loadingBar.style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          progressBarFull.style.width = 100 * progress + "%";
+        }).then((unityInstance_aux) => {
+          unityInstance = unityInstance_aux;
+          loadingBar.style.display = "none";
+          fullscreenButton.onclick = () => {
+            unityInstance_aux.SetFullscreen(1);
+          };
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
