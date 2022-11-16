@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>The evil run</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css?v=2">
+    <link rel="stylesheet" href="TemplateData/style.css?v=6">
 
     <style type="text/css">
 
@@ -51,6 +51,10 @@
         box-sizing: border-box;
     }
     
+    @media screen and (max-width: 480px) {
+      #start-camera{width:100%;}
+      #click-photo{width:100%;}
+    }
     </style>
 
   </head>
@@ -59,7 +63,7 @@
 
 
 
-
+    
 
     <button id="start-camera">Activar Camera</button>
     <button id="click-photo">Hacer Foto</button>
@@ -76,7 +80,9 @@
     <br>
     
     <script>
-    
+    var is_mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+
     let camera_button = document.querySelector("#start-camera");
     let video = document.querySelector("#video");
     let click_button = document.querySelector("#click-photo");
@@ -117,8 +123,7 @@
 
             var value = image_data_url.replace('data:image/jpeg;base64,','');
 
-            console.log("enter");
-            console.log(value);
+
 
 
             
@@ -129,11 +134,15 @@
             for(var i=0;i<chunks.length; i++){
                 unityInstance.SendMessage('GameController', 'PlayerSetImagePart', i+"|"+chunks[i]);
             
-            //console.log(i+"/"+chunks.length+"@"+chunks[i]);
+              //console.log(i+"/"+chunks.length+"@"+chunks[i]);
             }
 
             setTimeout(function(){
                 unityInstance.SendMessage('GameController', 'PlayerSetImageFull');
+                
+                if( is_mobile ){
+                  unityInstance.SendMessage('SwipeDetector', 'Activate');
+                }
             },5);
             
 
@@ -160,13 +169,13 @@
     <!-- start unity -->
 
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
           <div id="unity-progress-bar-full"></div>
         </div>
       </div>
+      <canvas id="unity-canvas" width=960 height=600></canvas>
       <div style="display:none"><div id="unity-warning"> </div></div>
       <div id="unity-footer" style="display:none">
         <div id="unity-webgl-logo"></div>
@@ -208,11 +217,11 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/web12.loader.js";
+      var loaderUrl = buildUrl + "/web21.loader.js";
       var config = {
-        dataUrl: buildUrl + "/web12.data",
-        frameworkUrl: buildUrl + "/web12.framework.js",
-        codeUrl: buildUrl + "/web12.wasm",
+        dataUrl: buildUrl + "/web21.data",
+        frameworkUrl: buildUrl + "/web21.framework.js",
+        codeUrl: buildUrl + "/web21.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "Crash",
@@ -227,7 +236,8 @@
       // the canvas DOM size and WebGL render target sizes yourself.
       // config.matchWebGLToCanvasSize = false;
 
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      
+      if (is_mobile) {
         // Mobile device style: fill the whole browser client area with the game canvas:
 
         var meta = document.createElement('meta');
